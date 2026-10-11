@@ -65,6 +65,23 @@ and the next run continues where it left off.
 
 Tracks marked `<-- check` in the output have a score below 75, so give them a listen: it may be the wrong version.
 
+## Where the data comes from
+
+Nothing is downloaded from Spotify itself: only public metadata and covers, with no API key and no login.
+
+| What | Source | How |
+|---|---|---|
+| **Liked songs** (id, title, artists, album, year, duration, explicit) | Spotify Web API via [exportify.net](https://exportify.net) | You sign in on exportify and it exports a CSV. The project itself doesn't use the API |
+| **Album tracklist** (title, year, tracks, numbers) | Public album page `open.spotify.com/album/…` | Open Graph meta tags: `og:title`, `music:release_date`, `music:song`, `music:song:track` |
+| **Album track data** (title, artists, duration) | Public track pages `open.spotify.com/track/…` | Meta tags `og:title`, `og:description`, `music:duration` |
+| **Track number in the album** | Public track page | Meta tag `music:album:track` |
+| **Cover art** | Spotify oEmbed (`open.spotify.com/oembed`) → image on `i.scdn.co` | The size id in the image URL is swapped from 300px to the original or 640px, then ffmpeg resizes it to 1200px |
+| **Fallback cover** | YouTube Music | Thumbnail from the search result at 1200×1200. Not used for videos: their thumbnails are 16:9 |
+| **Track search** | YouTube Music | Unofficial `ytmusicapi` library, no key: songs first, then videos from the artist's channel |
+| **Audio** | YouTube Music (`music.youtube.com/watch?v=…`) | `yt-dlp`, format 251 (Opus ~160k), no re-encoding, with your YouTube cookies |
+| **Audio for tracks missing on YTM** | Telegram bot | Through your Telegram account (Telethon). Where the bot gets its audio is unknown. The file is converted to Opus 144k; tags and cover come from Spotify as above |
+| **Tags in the file** | All of the above | Written with `mutagen`, plus a custom `spotify_track_id` tag that lets `sync` find a file even after it was renamed |
+
 ## How it works
 
 ```
