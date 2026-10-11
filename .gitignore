@@ -1,0 +1,12 @@
+# личное: прогресс, сессии Telegram, куки, CSV, настройки, музыка
+data/
+music/
+config.ini
+*.session
+*.session-journal
+cookies.txt
+
+# Python
+.venv/
+__pycache__/
+*.pyc

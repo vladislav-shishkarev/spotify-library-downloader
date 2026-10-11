@@ -1,0 +1,8 @@
+Telethon==1.45.0
+mutagen==1.48.1
+yt-dlp==2026.8.19
+yt-dlp-ejs==0.8.0
+deno==2.9.7
+ytmusicapi==1.12.3
+imageio-ffmpeg==0.6.0
+Send2Trash==2.1.0
