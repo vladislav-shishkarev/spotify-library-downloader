@@ -1,4 +1,4 @@
-"""Файлы прогресса: что скачано (json {spotify_id: имя файла}) и что упало (tsv id\\tназвание\\tошибка)."""
+"""Progress files: what is downloaded (json {spotify_id: file name}) and what failed (tsv id\\ttitle\\terror)."""
 import json
 import threading
 from pathlib import Path
@@ -6,7 +6,7 @@ from pathlib import Path
 from .config import DATA
 from .util import BLOCK_RE
 
-_lock = threading.Lock()  # потоки ytm и запись из бота не должны писать файлы одновременно
+_lock = threading.Lock()  # ytm threads and the bot must not write files at the same time
 
 
 class JsonStore:
@@ -24,14 +24,14 @@ class JsonStore:
         self.path.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
 
     def set(self, tid, name):
-        """Перечитывает файл перед записью — другой процесс (второй аккаунт) мог дописать своё."""
+        """Re-reads the file before writing — another process (a second account) may have added something."""
         with _lock:
             data = self.load()
             data[tid] = name
             self.write(data)
 
     def claim(self, tid, name) -> bool:
-        """Как set, но False, если трек уже записан под другим именем (успел скачать другой аккаунт)."""
+        """Like set, but returns False if the track is already saved under another name (another account got it first)."""
         with _lock:
             data = self.load()
             if tid in data and data[tid] != name:
@@ -55,7 +55,7 @@ class FailedLog:
         return [l for l in self.path.read_text(encoding="utf-8").splitlines() if l]
 
     def ids(self, skip_blocked=False) -> set:
-        """skip_blocked: строки с блокировкой YouTube — не вина трека, их пробуем снова."""
+        """skip_blocked: lines where YouTube blocked us are not the track's fault, so we try them again."""
         return {l.split("\t")[0] for l in self._lines() if not (skip_blocked and BLOCK_RE.search(l))}
 
     def append(self, tid, label, error):
@@ -81,7 +81,7 @@ class FailedLog:
 
 YTM_DONE = JsonStore(DATA / "done_ytm.json")
 BOT_DONE = JsonStore(DATA / "done.json")
-ALBUMS_DONE = JsonStore(DATA / "albums.json")  # скачанное album.py (альбомы целиком, не только лайки)
+ALBUMS_DONE = JsonStore(DATA / "albums.json")  # downloaded by album.py (whole albums, not only liked songs)
 
 YTM_FAILED = FailedLog(DATA / "failed_ytm.txt")
 BOT_FAILED = FailedLog(DATA / "failed.txt")
@@ -89,5 +89,5 @@ ALBUMS_FAILED = FailedLog(DATA / "failed_albums.txt")
 
 
 def downloaded() -> dict:
-    """Всё, что уже лежит в папке, кем бы ни было скачано: {spotify_id: имя файла}."""
+    """Everything already in the folder, no matter who downloaded it: {spotify_id: file name}."""
     return {**ALBUMS_DONE.load(), **BOT_DONE.load(), **YTM_DONE.load()}

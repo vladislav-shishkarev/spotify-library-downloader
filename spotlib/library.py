@@ -1,4 +1,4 @@
-"""Список треков: CSV из exportify или .txt со ссылками на треки."""
+"""Track list: CSV from exportify or a .txt file with track links."""
 import csv
 import re
 from dataclasses import dataclass, field
@@ -14,11 +14,11 @@ class Track:
     artists: list = field(default_factory=list)
     album: str = ""
     year: str = ""
-    duration: float = 0.0  # сек
+    duration: float = 0.0  # seconds
     explicit: bool = False
-    # False — трек из .txt со ссылками: метаданных нет, остаются теги, которые прислал бот
+    # False — a track from a .txt file with links: no metadata, so the bot's tags are kept
     has_meta: bool = True
-    source_line: str = ""  # для .txt — сама строка, показывается вместо названия
+    source_line: str = ""  # for .txt — the line itself, shown instead of the title
 
     @property
     def label(self):
@@ -53,7 +53,7 @@ def _from_txt(path: Path):
 
 
 def load_tracks(path: Path):
-    """[Track] без дублей, в порядке файла."""
+    """[Track] without duplicates, in file order."""
     if not path.exists():
         raise SystemExit(f"{path.name} not found — export your library from exportify.net into the data/ folder")
     rows = _from_csv(path) if path.suffix.lower() == ".csv" else _from_txt(path)

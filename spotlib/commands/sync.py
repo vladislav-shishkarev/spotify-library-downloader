@@ -1,14 +1,14 @@
 """
-Синхронизирует папку с музыкой со свежим CSV из exportify.
+Syncs the music folder with a fresh CSV from exportify.
 
-1. Треки, которых больше нет в CSV (убрал лайк) -> файлы в корзину Windows, записи из прогресса.
-2. Треки из CSV, чей файл пропал из папки -> будут скачаны заново.
-3. Новые треки -> докачиваются как в ytm_download.py.
+1. Tracks that are no longer in the CSV (unliked) -> files go to the recycle bin, entries leave the progress files.
+2. Tracks from the CSV whose file is missing from the folder -> downloaded again.
+3. New tracks -> downloaded like in ytm_download.py.
 
-    python sync.py --dry-run      # только показать, что будет сделано
-    python sync.py                # синхронизировать (перед удалением спросит)
-    python sync.py --yes          # без вопроса
-Остальные аргументы (--workers, --limit, --retry-failed) передаются в ytm_download.py.
+    python sync.py --dry-run      # only show what would be done
+    python sync.py                # sync (asks before deleting)
+    python sync.py --yes          # without asking
+Other arguments (--workers, --limit, --retry-failed) are passed to ytm_download.py.
 """
 import argparse
 from pathlib import Path
@@ -21,11 +21,11 @@ from ..config import load_config
 from ..library import load_tracks
 from . import ytm
 
-MAX_REMOVE_SHARE = 0.25  # пропало больше четверти — скорее всего, CSV не тот/битый
+MAX_REMOVE_SHARE = 0.25  # more than a quarter disappeared — the CSV is probably wrong or broken
 
 
 def scan_tags(out_dir: Path):
-    """{spotify_id: путь} по тегу spotify_track_id, который ставится при скачивании."""
+    """{spotify_id: path} by the spotify_track_id tag that is set when downloading."""
     found = {}
     for p in out_dir.iterdir():
         if p.suffix.lower() not in (".opus", ".ogg"):
@@ -45,7 +45,7 @@ def main(argv=None):
     ap.add_argument("--yes", action="store_true", help="delete without asking")
     ap.add_argument("--force", action="store_true", help="delete even if suspiciously many tracks disappeared from likes")
     args, passthrough = ap.parse_known_args(argv)
-    ytm.parse_args(passthrough)  # проверяем аргументы для докачки сразу, а не после удаления
+    ytm.parse_args(passthrough)  # check the download arguments now, not after deleting
 
     cfg = load_config()
     out_dir = cfg.out_dir
@@ -54,11 +54,11 @@ def main(argv=None):
         raise SystemExit(f"No tracks in {cfg.tracks_file.name} — not syncing")
     liked = {t.tid for t in tracks}
 
-    # (файл прогресса, его содержимое): у YTM и у бота свои; albums.json sync не трогает
+    # (progress file, its contents): YTM and the bot have their own; sync doesn't touch albums.json
     stores = [(s, s.load()) for s in (state.YTM_DONE, state.BOT_DONE)]
     have = {tid: name for _, d in stores for tid, name in d.items()}
 
-    # файл ищем по тегу spotify_track_id (переживает переименование), иначе — по имени из прогресса
+    # find the file by the spotify_track_id tag (survives renaming), otherwise by the name from progress
     on_disk = scan_tags(out_dir)
     paths = {}
     for tid, name in have.items():
@@ -69,9 +69,9 @@ def main(argv=None):
 
     removed = {tid: name for tid, name in have.items() if tid not in liked}
     missing = {tid: name for tid, name in have.items() if tid in liked and tid not in paths}
-    # строки с блокировкой YouTube — не «не нашлось», ytm_download их повторит сам
+    # lines where YouTube blocked us are not "not found", ytm_download retries them itself
     failed = state.YTM_FAILED.ids(skip_blocked=True)
-    # треки из albums.json (album.py) уже лежат в папке — не новые; удалять их sync не будет
+    # tracks from albums.json (album.py) are already in the folder — not new; sync won't delete them
     albums = state.ALBUMS_DONE.load()
     new = [t for t in tracks if t.tid not in have and t.tid not in failed and t.tid not in albums]
 
@@ -107,7 +107,7 @@ def main(argv=None):
             if tid in removed or tid in missing:
                 del data[tid]
                 changed = True
-            elif data[tid] != have[tid]:  # файл переименовали — запоминаем новое имя
+            elif data[tid] != have[tid]:  # the file was renamed — remember the new name
                 data[tid] = have[tid]
                 changed = True
         if changed:
@@ -115,7 +115,7 @@ def main(argv=None):
     if removed or missing:
         print(f"Moved to the recycle bin: {len(removed)}, to re-download: {len(missing)}")
 
-    state.YTM_FAILED.prune(liked)  # треки, которых больше нет в лайках
+    state.YTM_FAILED.prune(liked)  # tracks that are no longer liked
 
     if new or missing:
         print("\nDownloading from YouTube Music...\n", flush=True)

@@ -1,4 +1,4 @@
-"""Теги и обложки в .opus/.ogg и .m4a."""
+"""Tags and covers in .opus/.ogg and .m4a."""
 import base64
 import re
 from pathlib import Path
@@ -13,12 +13,12 @@ from .library import Track
 
 
 def get_cover(t: Track, ytm_candidate=None):
-    """Обложка альбома из Spotify, запасной вариант — обложка с YouTube Music."""
+    """Album cover from Spotify; the YouTube Music cover is the fallback."""
     if cover := spotify.cover(t.tid):
         return cover
     c = ytm_candidate or {}
     thumbs = c.get("thumbnails") or []
-    if thumbs and not c.get("from_video"):  # у видео превью 16:9, а не обложка
+    if thumbs and not c.get("from_video"):  # a video has a 16:9 thumbnail, not a cover
         url = re.sub(r"=w\d+-h\d+.*$", f"=w{COVER_SIZE}-h{COVER_SIZE}-l90-rj", thumbs[-1]["url"])
         try:
             return spotify.fetch(url)
@@ -68,5 +68,5 @@ def tag(path: Path, t: Track, cover, track=None):
 
 
 def tag_full(path: Path, t: Track, ytm_candidate=None):
-    """Теги + обложка + номер трека — всё, что можно достать по треку."""
+    """Tags + cover + track number — everything we can get for the track."""
     tag(path, t, get_cover(t, ytm_candidate), spotify.track_number(t.tid))

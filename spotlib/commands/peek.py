@@ -1,4 +1,4 @@
-"""Показывает последние сообщения в чате с ботом (текст, кнопки, файлы) — для отладки.
+"""Shows the latest messages in the bot chat (text, buttons, files) — for debugging.
 
     python peek.py 15
 """

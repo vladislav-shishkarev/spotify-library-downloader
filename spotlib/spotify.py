@@ -1,4 +1,4 @@
-"""Публичные страницы Spotify (без API): обложки, номера треков, треклисты альбомов."""
+"""Public Spotify pages (no API): covers, track numbers, album tracklists."""
 import html
 import json
 import re
@@ -27,13 +27,13 @@ def meta(page_html, name):
 
 
 def cover(tid):
-    """Обложка альбома по id трека — всегда тот альбом, что в CSV, а не сингл. None, если не вышло."""
+    """Album cover by track id — always the album from the CSV, not a single. None if it fails."""
     try:
         url = json.loads(fetch(f"https://open.spotify.com/oembed?url=https://open.spotify.com/track/{tid}"))[
             "thumbnail_url"]
     except Exception:
         return None
-    # ab67616d00001e02 = 300px, ab67616d000082c1 = оригинал (обычно 2000px), ab67616d0000b273 = 640px
+    # ab67616d00001e02 = 300px, ab67616d000082c1 = original (usually 2000px), ab67616d0000b273 = 640px
     for size_id in ("ab67616d000082c1", "ab67616d0000b273", None):
         try:
             return shrink(fetch(url.replace("ab67616d00001e02", size_id) if size_id else url))
@@ -43,7 +43,7 @@ def cover(tid):
 
 
 def track_number(tid):
-    """Номер трека в альбоме — со страницы трека (в CSV exportify его нет)."""
+    """Track number in the album — from the track page (the exportify CSV doesn't have it)."""
     try:
         m = TRACK_NO_RE.search(page(f"https://open.spotify.com/track/{tid}"))
         return m.group(1) if m else None
@@ -52,7 +52,7 @@ def track_number(tid):
 
 
 def load_album(url):
-    """(название альбома, [(Track, номер)]) по ссылке на альбом."""
+    """(album title, [(Track, number)]) for an album link."""
     m = ALBUM_ID_RE.search(url)
     if not m:
         raise SystemExit(f"Doesn't look like a Spotify album link: {url}")
@@ -69,7 +69,7 @@ def load_album(url):
     for i, tid in enumerate(tids):
         tp = page(f"https://open.spotify.com/track/{tid}")
         name = (meta(tp, "og:title") or [""])[0]
-        # "FACE · REVENGE · Song · 2017" — артисты идут до названия альбома
+        # "FACE · REVENGE · Song · 2017" — the artists come before the album title
         desc = (meta(tp, "og:description") or [""])[0].split(" · ")
         artists_part = desc[: desc.index(album)] if album in desc else desc[:1]
         artists = [a.strip() for a in ", ".join(artists_part).split(",") if a.strip()]

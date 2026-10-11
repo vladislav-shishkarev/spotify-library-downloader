@@ -1,11 +1,11 @@
-"""Разбор сообщений бота: что он ответил и тот ли трек прислал."""
+"""Parsing bot messages: what it replied and whether it sent the right track."""
 import re
 
 from ..library import Track
 
 WAIT_RE = re.compile(r"wait\s+(\d+)\s*sec", re.I)  # "please wait 22 seconds"
-LIMIT_RE = re.compile(r"\blimit|daily|today|quota|per day", re.I)  # дневной лимит (точный текст неизвестен)
-# "⚠️ Failed to download X. Try again later or /upgrade to premium!" — этот трек бот не отдаст
+LIMIT_RE = re.compile(r"\blimit|daily|today|quota|per day", re.I)  # daily limit (the exact text is unknown)
+# "⚠️ Failed to download X. Try again later or /upgrade to premium!" — the bot will not give this track
 FAIL_RE = re.compile(r"failed to download|could ?n.?t download|unable to download", re.I)
 BUSY_RE = re.compile(r"being downloaded|downloading|uploading|queue", re.I)
 EXTRAS_RE = re.compile(r"\(.*?\)|\[.*?\]| - .*")  # (feat. ...), [Live], " - Remastered"
@@ -26,7 +26,7 @@ def _file_words(msg):
 
 
 def audio_matches(msg, title):
-    """Грубая проверка, что пришёл именно наш трек, а не опоздавший предыдущий."""
+    """Rough check that this is our track and not a late file for the previous one."""
     want = words(EXTRAS_RE.sub("", title or ""))
     if not want:
         return True
@@ -34,7 +34,7 @@ def audio_matches(msg, title):
 
 
 def history_match(msg, t: Track):
-    """Строгая проверка для поиска по истории: все слова названия, артист и одинаковая версия."""
+    """Strict check for the history search: all title words, the artist and the same version."""
     want = words(EXTRAS_RE.sub("", t.name))
     got = _file_words(msg)
     artist = words(" ".join(t.artists))
@@ -43,7 +43,7 @@ def history_match(msg, t: Track):
 
 
 def download_button(msg):
-    """Текст кнопки скачивания в карточке: 'Download Track' (поиск) или 'Download Song' (ссылка)."""
+    """Text of the download button in the card: 'Download Track' (search) or 'Download Song' (link)."""
     for row in msg.buttons or []:
         for b in row:
             low = b.text.lower()
@@ -57,6 +57,6 @@ def is_audio(msg):
 
 
 def describe(msgs):
-    """Короткое описание последних сообщений бота — для отладки при таймауте."""
+    """Short description of the bot's latest messages — for debugging after a timeout."""
     parts = [f"[{(m.raw_text or '').replace(chr(10), ' ')[:120]}]" for m in msgs[:3] if not m.out]
     return " | ".join(parts) or "the bot did not reply"

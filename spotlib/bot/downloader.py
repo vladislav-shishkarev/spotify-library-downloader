@@ -1,4 +1,4 @@
-"""Скачивание трека ботом: шлём ссылку -> бот сам качает (Auto Download) -> ждём аудио -> Opus с тегами."""
+"""Downloading a track with the bot: send a link -> the bot downloads it (Auto Download) -> wait for audio -> Opus with tags."""
 import asyncio
 import time
 from pathlib import Path
@@ -16,20 +16,20 @@ from ..util import unique_target
 from .protocol import (BUSY_RE, FAIL_RE, LIMIT_RE, WAIT_RE, DailyLimit, audio_matches, describe,
                        download_button, history_match, is_audio)
 
-ATTEMPTS = 2  # сколько раз пробовать трек, прежде чем записать в failed
+ATTEMPTS = 2  # how many times to try a track before writing it to failed
 
 
 def open_client(cfg: Config, account=1, robust=True) -> TelegramClient:
-    """Клиент для `async with`. robust: при пропаже сети переподключаться бесконечно,
-    а не сдаваться после 5 попыток."""
+    """Client for `async with`. robust: if the network drops, reconnect forever
+    instead of giving up after 5 attempts."""
     cfg.require_telegram()
     extra = {"connection_retries": -1, "retry_delay": 10} if robust else {}
     return TelegramClient(cfg.session_path(account), cfg.api_id, cfg.api_hash, **extra)
 
 
 def _convert(part: Path, t: Track) -> Path:
-    """Файл от бота -> Opus с тегами и обложкой из Spotify, как у YouTube Music.
-    Для треков без метаданных (.txt со ссылками) остаются теги бота."""
+    """File from the bot -> Opus with tags and a Spotify cover, same as YouTube Music.
+    Tracks without metadata (.txt with links) keep the bot's tags."""
     out = to_opus(part)
     if t.has_meta:
         tag_full(out, t)
@@ -45,7 +45,7 @@ async def save(audio, t: Track, out_dir: Path) -> str:
             if isinstance(a, DocumentAttributeAudio):
                 performer, title = a.performer, a.title
         base = f"{performer} - {title}" if performer and title else Path(audio.file.name or t.tid).stem
-    part = out_dir / f"{t.tid}.part"  # чтобы при обрыве не оставался битый файл
+    part = out_dir / f"{t.tid}.part"  # so a broken file isn't left behind if the download stops
     try:
         await audio.download_media(file=str(part))
         opus = await asyncio.to_thread(_convert, part, t)
@@ -57,9 +57,9 @@ async def save(audio, t: Track, out_dir: Path) -> str:
 
 
 async def process(client, bot, t: Track, out_dir: Path, timeout: float) -> str:
-    """Один трек через бота -> имя файла в out_dir."""
+    """One track via the bot -> file name in out_dir."""
     sent_url = f"https://open.spotify.com/track/{t.tid}"
-    for _ in range(4):  # повторная отправка после "please wait N seconds"
+    for _ in range(4):  # send again after "please wait N seconds"
         sent = await client.send_message(bot, sent_url)
         print("    link sent, waiting for the file...", flush=True)
         start = time.monotonic()
@@ -70,14 +70,14 @@ async def process(client, bot, t: Track, out_dir: Path, timeout: float) -> str:
             await asyncio.sleep(3)
             msgs = await client.get_messages(bot, limit=20, min_id=sent.id)
             card = None
-            for m in reversed(msgs):  # от старых к новым
+            for m in reversed(msgs):  # from old to new
                 if m.out:
                     continue
                 if is_audio(m):
                     if audio_matches(m, t.name):
                         print("    audio received, downloading...", flush=True)
                         return await save(m, t, out_dir)
-                    continue  # опоздавший предыдущий трек
+                    continue  # a late file for the previous track
                 text = m.raw_text or ""
                 if download_button(m):
                     card = m
@@ -92,7 +92,7 @@ async def process(client, bot, t: Track, out_dir: Path, timeout: float) -> str:
                     busy = True
             if wait_s is not None:
                 break
-            # авто-загрузка не стартовала — жмём кнопку сами
+            # auto-download didn't start — press the button ourselves
             if card and not busy and not clicked and time.monotonic() - start > 20:
                 print("    auto-download didn't start, pressing the button...", flush=True)
                 clicked = True
@@ -117,14 +117,14 @@ async def _reconnect(client):
 
 async def download_queue(client, bot, cfg: Config, todo, store: JsonStore, failed: FailedLog,
                          label=lambda i, t: t.label):
-    """Качает todo ([Track]) по очереди, не чаще одного раза в cfg.cooldown секунд.
-    Успех пишется в store, ошибки — в failed. label(номер, трек) — заголовок для вывода.
-    При дневном лимите бота останавливается."""
+    """Downloads todo ([Track]) one by one, at most once every cfg.cooldown seconds.
+    Successes go to store, errors go to failed. label(number, track) is the heading to print.
+    Stops when the bot hits its daily limit."""
     out_dir, cooldown, timeout = cfg.out_dir, cfg.cooldown, cfg.timeout
     last_start = 0.0
     for i, t in enumerate(todo, 1):
         print(label(i, t), flush=True)
-        if t.tid in state.downloaded():  # второй аккаунт или ytm_download успели раньше
+        if t.tid in state.downloaded():  # a second account or ytm_download got it first
             print("    already downloaded (by another account or from YouTube Music)")
             continue
         attempt = 0
@@ -142,7 +142,7 @@ async def download_queue(client, bot, cfg: Config, todo, store: JsonStore, faile
                 print("Progress is saved — run again tomorrow, it will continue from this track.")
                 return
             except (ConnectionError, OSError) as e:
-                # проблема с сетью, а не с треком — попытку не засчитываем
+                # a network problem, not a track problem — don't count this attempt
                 print(f"    connection lost ({e}), reconnecting...", flush=True)
                 await _reconnect(client)
                 continue
@@ -155,20 +155,20 @@ async def download_queue(client, bot, cfg: Config, todo, store: JsonStore, faile
                     print(f"    failed ({e}), retrying")
                 continue
             if store.claim(t.tid, name):
-                state.YTM_FAILED.drop(t.tid)  # не нашлось на YTM, но бот скачал
+                state.YTM_FAILED.drop(t.tid)  # not found on YTM, but the bot downloaded it
                 print(f"    -> {name}")
-            else:  # тот же трек успел скачать другой аккаунт — дубль не нужен
+            else:  # another account already downloaded this track — we don't need a duplicate
                 (out_dir / name).unlink(missing_ok=True)
                 print("    already downloaded by another account, duplicate removed")
             break
 
 
 async def from_history(client, bot, wanted, out_dir: Path, dry_run: bool):
-    """Забирает из истории чата с ботом уже присланные аудио для недостающих треков."""
+    """Takes audio the bot already sent from the chat history for missing tracks."""
     left = list(wanted)
     found = 0
     print(f"Searching the chat history for {len(left)} tracks...", flush=True)
-    async for m in client.iter_messages(bot):  # от новых к старым
+    async for m in client.iter_messages(bot):  # from new to old
         if m.out or not is_audio(m):
             continue
         for t in left:

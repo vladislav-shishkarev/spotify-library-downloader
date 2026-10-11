@@ -1,13 +1,13 @@
 """
-Качает альбом целиком по ссылке Spotify — даже если его нет в поиске (страница по ссылке открывается).
+Downloads a whole album by its Spotify link — even if it isn't in search (the page still opens by link).
 
-Метаданные (названия, длительность, номера, дата) — со страниц альбома и треков Spotify,
-звук — с YouTube Music как в ytm_download.py, то, что там не нашлось, — через бота (--bot).
-Скачанное пишется в albums.json: sync.py такие треки не удаляет, даже если их нет в лайках.
+Metadata (titles, durations, numbers, date) comes from the Spotify album and track pages,
+audio comes from YouTube Music like in ytm_download.py; what isn't found there — via the bot (--bot).
+Downloads are saved to albums.json: sync.py doesn't delete these tracks, even if they aren't liked.
 
-    python album.py https://open.spotify.com/album/... --dry-run   # показать треклист
-    python album.py https://open.spotify.com/album/...             # скачать с YouTube Music
-    python album.py https://open.spotify.com/album/... --bot       # докачать остальное ботом
+    python album.py https://open.spotify.com/album/... --dry-run   # show the tracklist
+    python album.py https://open.spotify.com/album/...             # download from YouTube Music
+    python album.py https://open.spotify.com/album/... --bot       # download the rest with the bot
 """
 import argparse
 import asyncio
@@ -20,7 +20,7 @@ from ..util import BLOCK_RE, Stop, clean_error, run_parallel
 
 
 def via_ytm(todo, cfg: Config, workers):
-    """Возвращает, сколько скачалось."""
+    """Returns how many tracks were downloaded."""
     ok = 0
 
     def on_ok(i, total, item, res):

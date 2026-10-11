@@ -1,16 +1,16 @@
-"""Оценка, насколько кандидат с YouTube Music совпадает с треком из Spotify."""
+"""Scores how well a YouTube Music candidate matches a Spotify track."""
 import re
 import unicodedata
 from difflib import SequenceMatcher
 
 from .library import Track
 
-MAX_DIFF = 12  # сек: кандидаты с большей разницей по длительности отбрасываются
-MIN_SCORE = 55  # из ~100: ниже — считаем, что не нашли
-SURE_SCORE = 85  # уверенное совпадение — дальше не ищем
-CHECK_SCORE = 75  # ниже — стоит глянуть глазами, вдруг не та версия
-VIDEO_MAX_DIFF = 3  # сек: допуск по длительности для запасного поиска по видео
-MIN_TITLE = 0.6  # минимальная похожесть названия (0..1), ниже — точно не тот трек
+MAX_DIFF = 12  # seconds: candidates with a bigger duration difference are rejected
+MIN_SCORE = 55  # out of ~100: below this we treat the track as not found
+SURE_SCORE = 85  # confident match — stop searching
+CHECK_SCORE = 75  # below this — worth checking by ear, it may be the wrong version
+VIDEO_MAX_DIFF = 3  # seconds: duration tolerance for the fallback video search
+MIN_TITLE = 0.6  # minimum title similarity (0..1), below this it is surely a different track
 VERSION_RE = re.compile(
     r"\b(remix|rmx|bootleg|live|acoustic|instrumental|karaoke|cover|"
     r"sped up|speed up|slowed|reverb|nightcore|8d|edit|mashup|flip|vip|"
@@ -52,14 +52,14 @@ def _sim(a, b):
 def sim(a, b):
     a, b = norm(a), norm(b)
     s = _sim(a, b)
-    # на YTM русские артисты/названия бывают латиницей: "Дора" в Spotify = канал "Dora"
+    # on YTM Russian artists/titles are sometimes in Latin letters: "Дора" on Spotify = the "Dora" channel
     if s < 1.0 and (a.translate(TRANSLIT) != a or b.translate(TRANSLIT) != b):
         s = max(s, _sim(a.translate(TRANSLIT), b.translate(TRANSLIT)))
     return s
 
 
 def score(c, t: Track, max_diff=MAX_DIFF, min_artist=0.5):
-    """Очки кандидата c (результат поиска ytmusicapi) или None, если это точно не наш трек."""
+    """Score of candidate c (a ytmusicapi search result), or None if it is surely not our track."""
     dur = c.get("duration_seconds")
     if not c.get("videoId") or dur is None:
         return None
@@ -67,17 +67,17 @@ def score(c, t: Track, max_diff=MAX_DIFF, min_artist=0.5):
     if diff > max_diff:
         return None
     title_s = max(sim(c.get("title"), t.name), sim(strip_extras(c.get("title")), strip_extras(t.name)))
-    # другое название = другая песня, даже если совпали исполнитель и длительность
-    # (иначе "Original Don" ft. Fireboy DML подменялся его же "So Much Sense" той же длины)
+    # a different title means a different song, even if the artist and duration match
+    # (otherwise "Original Don" ft. Fireboy DML was replaced by his "So Much Sense" of the same length)
     if title_s < MIN_TITLE:
         return None
     c_artists = [a.get("name") for a in c.get("artists") or [] if a.get("name")]
     artist_s = max((sim(a, b) for a in c_artists for b in t.artists), default=0.0)
-    # имя нашего артиста только в названии ("8-Bit Måneskin Emulation", "in the style of ...") —
-    # это кавер; нужен совпадающий исполнитель в списке артистов
-    if artist_s < min_artist:  # чужой исполнитель — кавер/бутлег, не наш трек
+    # our artist's name is only in the title ("8-Bit Måneskin Emulation", "in the style of ...") —
+    # that is a cover; the artist must be in the list of artists
+    if artist_s < min_artist:  # a different artist — a cover/bootleg, not our track
         return None
-    # ремикс/лайв/sped up и т.п., которых нет в оригинальном названии
+    # remix/live/sped up etc. that are not in the original title
     if set(VERSION_RE.findall(norm(c.get("title")))) != set(VERSION_RE.findall(norm(t.name))):
         return None
     s = title_s * 40 + artist_s * 30 + max(0.0, 20 - diff * 2.5)

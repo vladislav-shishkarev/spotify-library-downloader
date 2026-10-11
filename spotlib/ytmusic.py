@@ -1,4 +1,4 @@
-"""Поиск трека на YouTube Music и скачивание исходного звука без перекодирования."""
+"""Finds a track on YouTube Music and downloads the original audio without re-encoding."""
 import os
 import shutil
 import sys
@@ -26,18 +26,18 @@ def _ytm():
 
 
 def _ensure_js_runtime():
-    """deno из venv — yt-dlp нужен JS-рантайм для YouTube."""
+    """deno from the venv — yt-dlp needs a JS runtime for YouTube."""
     bin_dir = str(Path(sys.executable).parent)
     if bin_dir not in os.environ.get("PATH", "").split(os.pathsep):
         os.environ["PATH"] = bin_dir + os.pathsep + os.environ.get("PATH", "")
 
 
 def find(t: Track):
-    """(кандидат, score) или (None, лучший score)."""
+    """(candidate, score) or (None, best score)."""
     main = t.artists[0] if t.artists else ""
     queries = [f"{main} {t.name}", f"{' '.join(t.artists)} {strip_extras(t.name)}", t.name]
     best, best_s, seen = None, -1.0, set()
-    for q in dict.fromkeys(queries):  # без дублей, порядок сохраняется
+    for q in dict.fromkeys(queries):  # no duplicates, order is kept
         for c in _ytm().search(q, filter="songs", limit=10):
             vid = c.get("videoId")
             if vid in seen:
@@ -50,9 +50,9 @@ def find(t: Track):
             break
     if best_s >= MIN_SCORE:
         return best, best_s
-    # В "песнях" YTM нет части каталога (региональные ограничения лейблов: Måneskin, Arctic Monkeys...),
-    # но то же аудио часто лежит видео на канале самого артиста. Берём только его и только почти
-    # точно по длительности — клипы с интро/аутро и чужие лирик-видео не проходят.
+    # Some of the catalog is missing from YTM "songs" (regional label restrictions: Måneskin, Arctic Monkeys...),
+    # but the same audio is often a video on the artist's own channel. We take only that, and only if
+    # the duration matches almost exactly — music videos with intros/outros and other people's lyric videos fail.
     for q in dict.fromkeys(queries[:2]):
         for c in _ytm().search(q, filter="videos", limit=10):
             s = score(c, t, max_diff=VIDEO_MAX_DIFF, min_artist=0.9)
@@ -66,11 +66,11 @@ def find(t: Track):
 def download_audio(video_id, tmp_dir: Path, cookies: Path | None):
     _ensure_js_runtime()
     opts = {
-        # 251 = webm/opus ~160k; иначе лучший доступный звук
+        # 251 = webm/opus ~160k; otherwise the best available audio
         "format": "251/bestaudio[acodec=opus]/bestaudio",
         "outtmpl": str(tmp_dir / f"{video_id}.%(ext)s"),
         "ffmpeg_location": FFMPEG,
-        # 'best' = просто вытащить звук из контейнера, без перекодирования
+        # 'best' = just take the audio out of the container, without re-encoding
         "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "best"}],
         "quiet": True,
         "no_warnings": True,
@@ -79,8 +79,8 @@ def download_audio(video_id, tmp_dir: Path, cookies: Path | None):
         "retries": 5,
     }
     if cookies:
-        # yt-dlp при закрытии перезаписывает cookiefile — даём каждой загрузке свою копию,
-        # чтобы потоки не портили оригинал одновременной записью
+        # yt-dlp rewrites the cookiefile when it closes — each download gets its own copy,
+        # so threads don't break the original by writing to it at the same time
         jar = tmp_dir / "cookies.txt"
         shutil.copyfile(cookies, jar)
         opts["cookiefile"] = str(jar)
@@ -94,10 +94,10 @@ def download_audio(video_id, tmp_dir: Path, cookies: Path | None):
 
 @dataclass
 class YtmResult:
-    name: str  # имя файла в out_dir
+    name: str  # file name in out_dir
     score: float
-    got: str  # что нашлось на YTM: "Артисты - Название"
-    diff: float  # разница длительности, сек
+    got: str  # what was found on YTM: "Artists - Title"
+    diff: float  # duration difference, seconds
 
     def describe(self):
         warn = "  <-- check" if self.score < CHECK_SCORE else ""

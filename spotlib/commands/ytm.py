@@ -1,17 +1,18 @@
 """
-Качает библиотеку по CSV из exportify через YouTube Music — без Spotify API и без лимитов.
+Downloads a library from an exportify CSV via YouTube Music — no Spotify API and no limits.
 
-Для каждого трека:
-  1. ищет среди *песен* YouTube Music (не клипов) по исполнителю и названию;
-  2. выбирает кандидата по длительности (сверка со Spotify), названию, исполнителю, альбому;
-  3. качает исходный звук без перекодирования (обычно Opus ~160 kbps -> .opus);
-  4. прописывает теги из CSV и квадратную обложку альбома.
+For each track:
+  1. searches YouTube Music *songs* (not music videos) by artist and title;
+  2. picks a candidate by duration (compared with Spotify), title, artist and album;
+  3. downloads the original audio without re-encoding (usually Opus ~160 kbps -> .opus);
+  4. writes tags from the CSV and the square album cover.
 
-Прогресс в done_ytm.json (треки из done.json бота и albums.json тоже пропускаются), ошибки — в failed_ytm.txt.
+Progress is in data/done_ytm.json (tracks from the bot's done.json and albums.json are skipped too),
+errors are in data/failed_ytm.txt.
 
-    python ytm_download.py --limit 5        # тест
-    python ytm_download.py                  # всё
-    python ytm_download.py --retry-failed   # повторить ненайденное
+    python ytm_download.py --limit 5        # test
+    python ytm_download.py                  # everything
+    python ytm_download.py --retry-failed   # retry tracks that weren't found
 """
 import argparse
 
@@ -23,7 +24,7 @@ from ..util import BLOCK_RE, Stop, clean_error, run_parallel
 
 
 def _existing(tracks, done, out_dir):
-    """[(Track, путь)] для уже скачанных файлов, которые лежат в папке."""
+    """[(Track, path)] for already downloaded files that are in the folder."""
     by_id = {t.tid: t for t in tracks}
     return [(by_id[tid], out_dir / name) for tid, name in done.items()
             if tid in by_id and (out_dir / name).exists()]
@@ -53,7 +54,7 @@ def fix_covers(tracks, out_dir, workers):
 
 
 def fix_track_numbers(tracks, out_dir, workers):
-    """Дописывает номер трека в альбоме в уже скачанные файлы, остальные теги не трогает."""
+    """Adds the album track number to already downloaded files; other tags are not changed."""
     items = _existing(tracks, {**state.BOT_DONE.load(), **state.YTM_DONE.load()}, out_dir)
     print(f"Setting track numbers: {len(items)} files", flush=True)
 
@@ -116,7 +117,7 @@ def main(argv=None):
         msg = clean_error(e)
         prefix = f"[{i}/{total}] {t.label}"
         if BLOCK_RE.search(msg):
-            # дальше всё будет падать так же — не засоряем failed, останавливаемся
+            # everything else will fail the same way — don't fill up failed, just stop
             print(f"{prefix}\n    YouTube is blocking: {msg[:200]}", flush=True)
             print("\nStopping. Export fresh cookies.txt (preferably from a private window) and run again.")
             raise Stop

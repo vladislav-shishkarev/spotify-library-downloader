@@ -1,13 +1,13 @@
 """
-Качает треки из Spotify-библиотеки через @Spotify_downloaderrr_bot.
+Downloads tracks from a Spotify library via @Spotify_downloaderrr_bot.
 
-Для каждого трека: шлёт боту ссылку -> бот сам качает (Auto Download) -> ждём аудио
--> сохраняем в out_dir. Бесплатный бот даёт 1 скачивание в ~90 сек и дневной лимит:
-при упоре в лимит скрипт останавливается, завтра просто запусти снова.
-Прогресс в done.json, можно прерывать и перезапускать.
+For each track: send the link to the bot -> the bot downloads it (Auto Download) -> wait for audio
+-> save it to out_dir. The free bot allows 1 download per ~90 s and has a daily limit:
+when the limit is reached the script stops, just run it again tomorrow.
+Progress is in data/done.json, you can stop and restart at any time.
 
-    python download.py --limit 3     # тест на трёх треках
-    python download.py               # всё
+    python download.py --limit 3     # test on three tracks
+    python download.py               # everything
 """
 import argparse
 import asyncio
@@ -34,7 +34,7 @@ async def run(args):
     cfg = load_config()
     cfg.require_telegram()
     tracks = load_tracks(cfg.tracks_file)
-    have = state.downloaded()  # скачанное ytm_download.py и album.py боту не трогать
+    have = state.downloaded()  # the bot must not touch what ytm_download.py and album.py downloaded
 
     if args.from_history:
         wanted = [t for t in tracks if t.tid not in have]
@@ -48,7 +48,7 @@ async def run(args):
     failed_ids = state.BOT_FAILED.ids()
     todo = [t for t in tracks if t.tid not in have and t.tid not in failed_ids]
     if args.account % 2 == 0:
-        todo.reverse()  # два аккаунта идут навстречу друг другу и не качают одно и то же
+        todo.reverse()  # two accounts go from opposite ends and don't download the same tracks
     if args.limit:
         todo = todo[: args.limit]
     print(f"Total {len(tracks)}, downloaded {len(have)}, skipped (errors) {len(failed_ids)}, queued {len(todo)}")

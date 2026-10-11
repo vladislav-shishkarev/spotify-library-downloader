@@ -1,1 +1,1 @@
-"""Скачивание Spotify-библиотеки: YouTube Music, телеграм-бот, альбомы, синхронизация с лайками."""
+"""Download a Spotify library: YouTube Music, Telegram bot, albums, sync with liked songs."""
