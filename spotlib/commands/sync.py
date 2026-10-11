@@ -94,7 +94,7 @@ def main(argv=None):
                          f"Make sure {cfg.tracks_file.name} is fresh and complete. If it is, run with --force")
 
     if removed and not args.yes:
-        if input(f"\nMove {len(removed)} files to the recycle bin? [y/N] ").strip().lower() not in ("y", "yes", "д", "да"):
+        if input(f"\nMove {len(removed)} files to the recycle bin? [y/N] ").strip().lower() not in ("y", "yes"):
             print("Deletion skipped")
             removed = {}
 
