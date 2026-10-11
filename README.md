@@ -1,26 +1,28 @@
 # spotify-library-downloader
 
-Скачивает твою библиотеку Spotify (лайки и целые альбомы) в `.opus` с тегами и обложками.
-**Spotify API и своё приложение в Spotify не нужны**: список треков берётся из CSV с [exportify.net](https://exportify.net), звук — с YouTube Music.
+**English** | [Русский](README.ru.md)
 
-*Downloads your Spotify library via YouTube Music — no Spotify API key needed. The interface is in Russian.*
+Downloads your Spotify library (liked songs and whole albums) as `.opus` files with tags and cover art.
+**No Spotify API key or developer app needed**: the track list comes from a CSV exported with [exportify.net](https://exportify.net), the audio comes from YouTube Music.
 
-## Что умеет
+> The command-line output is in Russian. Commands and flags are in English, so it's usable without knowing Russian.
 
-- **Точно находит треки на YouTube Music.** Сверяет длительность, название, исполнителя и альбом.
-  Отсекает ремиксы, sped up, slowed, каверы и live, которых нет в оригинальном названии.
-  Понимает транслитерацию: «Дора» в Spotify найдёт канал «Dora».
-- **Если трека нет среди песен YouTube Music** (так бывает из-за региональных ограничений), берёт видео
-  с канала самого исполнителя, но только при почти точном совпадении длительности.
-- **Качает без перекодирования:** Opus ~160 kbps как есть. Обложка альбома из Spotify уменьшается до 1200px,
-  номер трека в альбоме проставляется.
-- **Синхронизирует папку с лайками:** убрал лайк — файл уходит в корзину, добавил — докачивается.
-- **Качает альбом по ссылке**, даже если его нет в поиске.
-- **Что не нашлось на YouTube Music, докачивает через телеграм-бота** (опционально, медленно, с дневным лимитом).
+## Features
 
-## Установка
+- **Accurate matching on YouTube Music.** Compares duration, title, artist and album.
+  Rejects remixes, sped up / slowed, covers and live versions that aren't in the original title.
+  Handles Cyrillic transliteration: «Дора» on Spotify matches the "Dora" channel.
+- **Falls back to the artist's own channel.** If a song is missing from YouTube Music songs
+  (regional label restrictions), it takes a video from the artist's own channel, and only if the duration matches almost exactly.
+- **No re-encoding:** Opus ~160 kbps as served by YouTube. Album art comes from Spotify, downscaled to 1200px.
+  The track number within the album is set too.
+- **Syncs the folder with your likes:** unlike a song and the file goes to the recycle bin; like one and it gets downloaded.
+- **Downloads an album by link**, even if it doesn't show up in search.
+- **Optional Telegram bot fallback** for whatever YouTube Music doesn't have (slow, with a daily limit).
 
-Нужен Python 3.10+. ffmpeg и JS-рантайм для yt-dlp ставятся вместе с зависимостями.
+## Installation
+
+Requires Python 3.10+. ffmpeg and the JS runtime for yt-dlp are installed along with the dependencies.
 
 ```
 python -m venv .venv
@@ -28,61 +30,61 @@ python -m venv .venv
 copy config.example.ini config.ini                   # Linux/macOS: cp
 ```
 
-Все команды ниже запускаются Python'ом из `.venv` (`.venv\Scripts\python sync.py` или после активации venv).
+Run all commands below with the Python from `.venv` (`.venv\Scripts\python sync.py`, or activate the venv first).
 
-## Подготовка
+## Setup
 
-Личные файлы лежат в папке `data/`, она создаётся при первом запуске.
+Personal files live in the `data/` folder, which is created on first run.
 
-1. **Список треков.** Зайди на [exportify.net](https://exportify.net), экспортируй «Liked Songs»
-   (или любой плейлист) и сохрани как `data/liked_songs.csv`.
-2. **Куки YouTube.** Без них YouTube быстро начинает отвечать «Sign in to confirm you're not a bot».
-   Залогинься в YouTube (лучше в приватном окне), выгрузи куки в формате Netscape любым расширением
-   вроде «Get cookies.txt LOCALLY» и сохрани как `data/cookies.txt`.
-3. **Только для бота:** получи `api_id` и `api_hash` на [my.telegram.org](https://my.telegram.org)
-   и впиши их в `config.ini`. При первом запуске Telegram попросит номер телефона и код.
+1. **Track list.** Go to [exportify.net](https://exportify.net), export "Liked Songs"
+   (or any playlist) and save it as `data/liked_songs.csv`.
+2. **YouTube cookies.** Without them YouTube soon starts answering "Sign in to confirm you're not a bot".
+   Sign in to YouTube (preferably in a private window), export cookies in Netscape format
+   with any extension such as "Get cookies.txt LOCALLY", and save them as `data/cookies.txt`.
+3. **Telegram bot only:** get an `api_id` and `api_hash` at [my.telegram.org](https://my.telegram.org)
+   and put them into `config.ini`. On first run Telegram asks for your phone number and a login code.
 
-## Использование
+## Usage
 
 ```
-python ytm_download.py --limit 5          # тест на пяти треках
-python ytm_download.py                    # скачать всё с YouTube Music
-python ytm_download.py --retry-failed     # повторить то, что не нашлось
+python ytm_download.py --limit 5          # test on five tracks
+python ytm_download.py                    # download everything from YouTube Music
+python ytm_download.py --retry-failed     # retry tracks that weren't found
 
-python sync.py --dry-run                  # показать, что изменилось в лайках
-python sync.py                            # убрать лишнее в корзину и докачать новое
+python sync.py --dry-run                  # show what changed in your likes
+python sync.py                            # move removed songs to the recycle bin, download new ones
 
-python album.py https://open.spotify.com/album/... --dry-run   # треклист альбома
-python album.py https://open.spotify.com/album/...             # скачать альбом
-python album.py https://open.spotify.com/album/... --bot       # докачать альбом ботом
+python album.py https://open.spotify.com/album/... --dry-run   # show the album tracklist
+python album.py https://open.spotify.com/album/...             # download the album
+python album.py https://open.spotify.com/album/... --bot       # download the rest via the bot
 
-python download.py                        # докачать ботом то, чего нет на YouTube Music
-python download.py --from-history         # забрать уже присланное ботом из истории чата
+python download.py                        # download via the bot what YouTube Music doesn't have
+python download.py --from-history         # pick up files the bot already sent from the chat history
 ```
 
-Флаги каждой команды — `--help`. Все команды можно прерывать: прогресс сохраняется,
-и следующий запуск продолжит с того же места.
+Every command supports `--help`. Every command can be interrupted: progress is saved,
+and the next run continues where it left off.
 
-Треки, у которых в выводе стоит `<-- проверь` (score ниже 75), стоит послушать: возможно, нашлась не та версия.
+Tracks marked `<-- проверь` ("check this") in the output have a score below 75, so give them a listen: it may be the wrong version.
 
-## Как устроено
+## How it works
 
 ```
 spotlib/
-  config.py, state.py       настройки и файлы прогресса в data/
-  library.py                Track, чтение CSV / .txt
-  matching.py               оценка кандидатов с YouTube Music
-  ytmusic.py                поиск и скачивание (ytmusicapi + yt-dlp)
-  spotify.py, tagging.py    обложки, номера треков, альбомы; теги
-  bot/                      скачивание через телеграм-бота (Telethon)
-  commands/                 сами команды; файлы в корне — обёртки над ними
+  config.py, state.py       settings and progress files in data/
+  library.py                Track, reading CSV / .txt
+  matching.py               scoring YouTube Music candidates
+  ytmusic.py                search and download (ytmusicapi + yt-dlp)
+  spotify.py, tagging.py    covers, track numbers, albums; tags
+  bot/                      downloading via a Telegram bot (Telethon)
+  commands/                 the commands; the scripts in the root are thin wrappers
 ```
 
-## Дисклеймер
+## Disclaimer
 
-Проект для личного использования. Соблюдай авторские права и правила сервисов,
-которыми пользуешься. Слушать музыку лучше там, где за неё платят исполнителям.
+For personal use only. Respect copyright and the terms of the services you use.
+Streaming music where artists get paid is the better option.
 
-## Лицензия
+## License
 
 [MIT](LICENSE)
