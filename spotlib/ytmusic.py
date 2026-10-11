@@ -88,7 +88,7 @@ def download_audio(video_id, tmp_dir: Path, cookies: Path | None):
         ydl.download([f"https://music.youtube.com/watch?v={video_id}"])
     files = [p for p in tmp_dir.glob(f"{video_id}.*") if p.suffix in (".opus", ".m4a", ".ogg", ".mp3", ".aac")]
     if not files:
-        raise RuntimeError("yt-dlp не создал аудиофайл")
+        raise RuntimeError("yt-dlp did not produce an audio file")
     return files[0]
 
 
@@ -100,14 +100,14 @@ class YtmResult:
     diff: float  # разница длительности, сек
 
     def describe(self):
-        warn = "  <-- проверь" if self.score < CHECK_SCORE else ""
-        return f"-> {self.got} (score {self.score:.0f}, Δ{self.diff:+.0f}с){warn}"
+        warn = "  <-- check" if self.score < CHECK_SCORE else ""
+        return f"-> {self.got} (score {self.score:.0f}, Δ{self.diff:+.0f}s){warn}"
 
 
 def process(t: Track, out_dir: Path, cookies: Path | None) -> YtmResult:
     cand, s = find(t)
     if not cand:
-        raise LookupError(f"не найдено (лучший score {s:.0f})" if s >= 0 else "не найдено")
+        raise LookupError(f"not found (best score {s:.0f})" if s >= 0 else "not found")
     with tempfile.TemporaryDirectory(dir=out_dir) as tmp:
         src = download_audio(cand["videoId"], Path(tmp), cookies)
         tag_full(src, t, cand)
@@ -115,5 +115,5 @@ def process(t: Track, out_dir: Path, cookies: Path | None) -> YtmResult:
         src.replace(target)
     got = f"{', '.join(a['name'] for a in cand.get('artists') or [])} - {cand.get('title')}"
     if cand.get("from_video"):
-        got += " [видео с канала артиста]"
+        got += " [video from the artist's channel]"
     return YtmResult(target.name, s, got, cand.get("duration_seconds", 0) - t.duration)

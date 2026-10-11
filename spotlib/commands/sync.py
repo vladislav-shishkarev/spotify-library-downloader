@@ -41,9 +41,9 @@ def scan_tags(out_dir: Path):
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("--dry-run", action="store_true", help="ничего не менять, только показать")
-    ap.add_argument("--yes", action="store_true", help="удалять без подтверждения")
-    ap.add_argument("--force", action="store_true", help="удалять, даже если из лайков пропало подозрительно много")
+    ap.add_argument("--dry-run", action="store_true", help="change nothing, only show what would happen")
+    ap.add_argument("--yes", action="store_true", help="delete without asking")
+    ap.add_argument("--force", action="store_true", help="delete even if suspiciously many tracks disappeared from likes")
     args, passthrough = ap.parse_known_args(argv)
     ytm.parse_args(passthrough)  # проверяем аргументы для докачки сразу, а не после удаления
 
@@ -51,7 +51,7 @@ def main(argv=None):
     out_dir = cfg.out_dir
     tracks = load_tracks(cfg.tracks_file)
     if not tracks:
-        raise SystemExit(f"В {cfg.tracks_file.name} нет треков — не синхронизирую")
+        raise SystemExit(f"No tracks in {cfg.tracks_file.name} — not syncing")
     liked = {t.tid for t in tracks}
 
     # (файл прогресса, его содержимое): у YTM и у бота свои; albums.json sync не трогает
@@ -75,27 +75,27 @@ def main(argv=None):
     albums = state.ALBUMS_DONE.load()
     new = [t for t in tracks if t.tid not in have and t.tid not in failed and t.tid not in albums]
 
-    print(f"В лайках {len(liked)}, скачано {len(have)}")
-    print(f"  убраны из лайков: {len(removed)}")
+    print(f"Liked: {len(liked)}, downloaded: {len(have)}")
+    print(f"  removed from likes: {len(removed)}")
     for name in sorted(removed.values()):
         print(f"    - {name}")
-    print(f"  файл пропал из папки (скачаю заново): {len(missing)}")
+    print(f"  file missing from the folder (will re-download): {len(missing)}")
     for name in sorted(missing.values()):
         print(f"    ? {name}")
-    print(f"  новые/ещё не скачанные: {len(new)}")
-    print(f"  не нашлись раньше ({state.YTM_FAILED.name}, повторить: --retry-failed): {len(failed & liked)}")
+    print(f"  new / not downloaded yet: {len(new)}")
+    print(f"  not found earlier ({state.YTM_FAILED.name}, retry: --retry-failed): {len(failed & liked)}")
 
     if args.dry_run:
-        print("\n--dry-run: ничего не менял")
+        print("\n--dry-run: nothing changed")
         return
 
     if removed and len(removed) > MAX_REMOVE_SHARE * len(have) and not args.force:
-        raise SystemExit(f"\nИз лайков пропало {len(removed)} из {len(have)} — подозрительно много. "
-                         f"Проверь, что {cfg.tracks_file.name} свежий и полный. Если всё верно — запусти с --force")
+        raise SystemExit(f"\n{len(removed)} of {len(have)} tracks disappeared from likes — suspiciously many. "
+                         f"Make sure {cfg.tracks_file.name} is fresh and complete. If it is, run with --force")
 
     if removed and not args.yes:
-        if input(f"\nУбрать в корзину {len(removed)} файлов? [y/N] ").strip().lower() not in ("y", "yes", "д", "да"):
-            print("Удаление пропущено")
+        if input(f"\nMove {len(removed)} files to the recycle bin? [y/N] ").strip().lower() not in ("y", "yes", "д", "да"):
+            print("Deletion skipped")
             removed = {}
 
     for tid in removed:
@@ -113,12 +113,12 @@ def main(argv=None):
         if changed:
             store.write(data)
     if removed or missing:
-        print(f"В корзину: {len(removed)}, к повторной загрузке: {len(missing)}")
+        print(f"Moved to the recycle bin: {len(removed)}, to re-download: {len(missing)}")
 
     state.YTM_FAILED.prune(liked)  # треки, которых больше нет в лайках
 
     if new or missing:
-        print("\nДокачиваю с YouTube Music...\n", flush=True)
+        print("\nDownloading from YouTube Music...\n", flush=True)
         ytm.main(passthrough)
     else:
-        print("\nВсё актуально, докачивать нечего")
+        print("\nEverything is up to date, nothing to download")

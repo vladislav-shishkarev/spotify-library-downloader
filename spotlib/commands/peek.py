@@ -14,14 +14,14 @@ async def run(n):
     async with open_client(cfg, robust=False) as client:
         bot = await client.get_entity(cfg.bot_username)
         for m in reversed(await client.get_messages(bot, limit=n)):
-            who = "Я " if m.out else "БОТ"
-            print(f"--- #{m.id} {who} {m.date:%H:%M:%S}{' (изм.)' if m.edit_date else ''}")
+            who = "ME " if m.out else "BOT"
+            print(f"--- #{m.id} {who} {m.date:%H:%M:%S}{' (edited)' if m.edit_date else ''}")
             if m.raw_text:
                 print("   ", m.raw_text.replace("\n", "\n    ")[:400])
             if m.file:
-                print(f"    [файл] {m.file.mime_type} {m.file.name} {m.file.size} байт")
+                print(f"    [file] {m.file.mime_type} {m.file.name} {m.file.size} bytes")
             for row in m.buttons or []:
-                print("    [кнопки]", " | ".join(f"{b.text!r}" + (f" -> {b.url}" if getattr(b, "url", None) else "")
+                print("    [buttons]", " | ".join(f"{b.text!r}" + (f" -> {b.url}" if getattr(b, "url", None) else "")
                                               for b in row))
 
 

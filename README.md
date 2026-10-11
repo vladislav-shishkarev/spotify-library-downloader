@@ -5,8 +5,6 @@
 Downloads your Spotify library (liked songs and whole albums) as `.opus` files with tags and cover art.
 **No Spotify API key or developer app needed**: the track list comes from a CSV exported with [exportify.net](https://exportify.net), the audio comes from YouTube Music.
 
-> The command-line output is in Russian. Commands and flags are in English, so it's usable without knowing Russian.
-
 ## Features
 
 - **Accurate matching on YouTube Music.** Compares duration, title, artist and album.
@@ -65,7 +63,7 @@ python download.py --from-history         # pick up files the bot already sent f
 Every command supports `--help`. Every command can be interrupted: progress is saved,
 and the next run continues where it left off.
 
-Tracks marked `<-- проверь` ("check this") in the output have a score below 75, so give them a listen: it may be the wrong version.
+Tracks marked `<-- check` in the output have a score below 75, so give them a listen: it may be the wrong version.
 
 ## How it works
 

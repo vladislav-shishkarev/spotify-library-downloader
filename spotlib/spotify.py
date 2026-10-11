@@ -55,7 +55,7 @@ def load_album(url):
     """(название альбома, [(Track, номер)]) по ссылке на альбом."""
     m = ALBUM_ID_RE.search(url)
     if not m:
-        raise SystemExit(f"Не похоже на ссылку на альбом Spotify: {url}")
+        raise SystemExit(f"Doesn't look like a Spotify album link: {url}")
     p = page(f"https://open.spotify.com/album/{m.group(1)}")
     title = (meta(p, "og:title") or [""])[0]
     album = re.sub(r" - (?:Album|Single|EP|Compilation) by .*$", "", title).strip() or title
@@ -63,7 +63,7 @@ def load_album(url):
     tids = [re.search(r"track/(\w{22})", u).group(1) for u in meta(p, "music:song")]
     nums = meta(p, "music:song:track")
     if not tids:
-        raise SystemExit("На странице альбома не нашлось треков — Spotify мог поменять вёрстку")
+        raise SystemExit("No tracks found on the album page — Spotify may have changed its layout")
 
     out = []
     for i, tid in enumerate(tids):

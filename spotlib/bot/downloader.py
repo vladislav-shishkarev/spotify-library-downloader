@@ -61,7 +61,7 @@ async def process(client, bot, t: Track, out_dir: Path, timeout: float) -> str:
     sent_url = f"https://open.spotify.com/track/{t.tid}"
     for _ in range(4):  # повторная отправка после "please wait N seconds"
         sent = await client.send_message(bot, sent_url)
-        print("    отправил ссылку, жду файл...", flush=True)
+        print("    link sent, waiting for the file...", flush=True)
         start = time.monotonic()
         clicked = busy = False
         wait_s = None
@@ -75,7 +75,7 @@ async def process(client, bot, t: Track, out_dir: Path, timeout: float) -> str:
                     continue
                 if is_audio(m):
                     if audio_matches(m, t.name):
-                        print("    аудио пришло, качаю...", flush=True)
+                        print("    audio received, downloading...", flush=True)
                         return await save(m, t, out_dir)
                     continue  # опоздавший предыдущий трек
                 text = m.raw_text or ""
@@ -85,7 +85,7 @@ async def process(client, bot, t: Track, out_dir: Path, timeout: float) -> str:
                 if w := WAIT_RE.search(text):
                     wait_s = int(w.group(1))
                 elif FAIL_RE.search(text):
-                    raise RuntimeError("бот не смог скачать: " + text.replace("\n", " ")[:150])
+                    raise RuntimeError("the bot failed to download: " + text.replace("\n", " ")[:150])
                 elif LIMIT_RE.search(text):
                     raise DailyLimit(text.replace("\n", " ")[:300])
                 elif BUSY_RE.search(text):
@@ -94,17 +94,17 @@ async def process(client, bot, t: Track, out_dir: Path, timeout: float) -> str:
                 break
             # авто-загрузка не стартовала — жмём кнопку сами
             if card and not busy and not clicked and time.monotonic() - start > 20:
-                print("    авто-загрузка не началась, жму кнопку...", flush=True)
+                print("    auto-download didn't start, pressing the button...", flush=True)
                 clicked = True
                 try:
                     await card.click(text=download_button(card))
                 except errors.BotResponseTimeoutError:
                     pass
         if wait_s is None:
-            raise RuntimeError("нет аудио за отведённое время: " + describe(msgs))
-        print(f"    бот просит подождать {wait_s} сек", flush=True)
+            raise RuntimeError("no audio within the timeout: " + describe(msgs))
+        print(f"    the bot asks to wait {wait_s} s", flush=True)
         await asyncio.sleep(wait_s + 5)
-    raise RuntimeError("бот всё время просит подождать")
+    raise RuntimeError("the bot keeps asking to wait")
 
 
 async def _reconnect(client):
@@ -125,7 +125,7 @@ async def download_queue(client, bot, cfg: Config, todo, store: JsonStore, faile
     for i, t in enumerate(todo, 1):
         print(label(i, t), flush=True)
         if t.tid in state.downloaded():  # второй аккаунт или ytm_download успели раньше
-            print("    уже скачан другим аккаунтом")
+            print("    already downloaded (by another account or from YouTube Music)")
             continue
         attempt = 0
         while attempt < ATTEMPTS:
@@ -134,32 +134,32 @@ async def download_queue(client, bot, cfg: Config, todo, store: JsonStore, faile
             try:
                 name = await process(client, bot, t, out_dir, timeout)
             except errors.FloodWaitError as e:
-                print(f"    флуд-лимит телеги, жду {e.seconds} сек")
+                print(f"    Telegram flood limit, waiting {e.seconds} s")
                 await asyncio.sleep(e.seconds + 5)
                 continue
             except DailyLimit as e:
-                print(f"\nПохоже, дневной лимит бота. Ответ бота: {e}")
-                print("Прогресс сохранён — запусти завтра ещё раз, продолжит с этого трека.")
+                print(f"\nLooks like the bot's daily limit. Bot reply: {e}")
+                print("Progress is saved — run again tomorrow, it will continue from this track.")
                 return
             except (ConnectionError, OSError) as e:
                 # проблема с сетью, а не с треком — попытку не засчитываем
-                print(f"    обрыв связи ({e}), переподключаюсь...", flush=True)
+                print(f"    connection lost ({e}), reconnecting...", flush=True)
                 await _reconnect(client)
                 continue
             except Exception as e:
                 attempt += 1
                 if attempt == ATTEMPTS:
-                    print(f"    ОШИБКА: {e}")
+                    print(f"    ERROR: {e}")
                     failed.append(t.tid, t.label, e)
                 else:
-                    print(f"    не вышло ({e}), ещё попытка")
+                    print(f"    failed ({e}), retrying")
                 continue
             if store.claim(t.tid, name):
                 state.YTM_FAILED.drop(t.tid)  # не нашлось на YTM, но бот скачал
                 print(f"    -> {name}")
             else:  # тот же трек успел скачать другой аккаунт — дубль не нужен
                 (out_dir / name).unlink(missing_ok=True)
-                print("    уже скачан другим аккаунтом, дубль удалён")
+                print("    already downloaded by another account, duplicate removed")
             break
 
 
@@ -167,7 +167,7 @@ async def from_history(client, bot, wanted, out_dir: Path, dry_run: bool):
     """Забирает из истории чата с ботом уже присланные аудио для недостающих треков."""
     left = list(wanted)
     found = 0
-    print(f"Ищу в истории чата {len(left)} треков...", flush=True)
+    print(f"Searching the chat history for {len(left)} tracks...", flush=True)
     async for m in client.iter_messages(bot):  # от новых к старым
         if m.out or not is_audio(m):
             continue
@@ -183,5 +183,5 @@ async def from_history(client, bot, wanted, out_dir: Path, dry_run: bool):
                 break
         if not left:
             break
-    print(f"\nНайдено в истории: {found}, осталось скачать: {len(left)}"
-          + (" (--dry-run: ничего не скачивал)" if dry_run else ""))
+    print(f"\nFound in history: {found}, still to download: {len(left)}"
+          + (" (--dry-run: nothing downloaded)" if dry_run else ""))

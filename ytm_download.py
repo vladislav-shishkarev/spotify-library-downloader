@@ -1,4 +1,4 @@
-"""Качает библиотеку с YouTube Music. Подробности и флаги: spotlib/commands/ytm.py, python ytm_download.py --help"""
+"""Downloads the library from YouTube Music. Details and flags: spotlib/commands/ytm.py, python ytm_download.py --help"""
 from spotlib.commands import run
 from spotlib.commands.ytm import main
 

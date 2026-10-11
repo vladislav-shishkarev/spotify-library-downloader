@@ -1,4 +1,4 @@
-"""Последние сообщения в чате с ботом — для отладки. Подробности и флаги: spotlib/commands/peek.py, python peek.py 15"""
+"""Shows the latest messages in the bot chat, for debugging. Details: spotlib/commands/peek.py, python peek.py 15"""
 from spotlib.commands import run
 from spotlib.commands.peek import main
 

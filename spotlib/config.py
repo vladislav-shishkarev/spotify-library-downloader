@@ -22,7 +22,7 @@ class Config:
 
     def require_telegram(self):
         if not self.api_id or "PASTE" in self.api_hash:
-            raise SystemExit("Заполни api_id / api_hash в config.ini (https://my.telegram.org)")
+            raise SystemExit("Fill in api_id / api_hash in config.ini (https://my.telegram.org)")
 
     @staticmethod
     def session_path(account: int) -> str:
@@ -33,7 +33,7 @@ class Config:
 def load_config() -> Config:
     cfg = configparser.ConfigParser(inline_comment_prefixes=(";",))
     if not cfg.read(ROOT / "config.ini", encoding="utf-8"):
-        raise SystemExit("Нет config.ini — скопируй config.example.ini в config.ini и заполни")
+        raise SystemExit("config.ini not found — copy config.example.ini to config.ini and fill it in")
     DATA.mkdir(exist_ok=True)
     out_dir = ROOT / cfg.get("run", "out_dir", fallback="music")
     out_dir.mkdir(exist_ok=True)

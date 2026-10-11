@@ -55,7 +55,7 @@ def _from_txt(path: Path):
 def load_tracks(path: Path):
     """[Track] без дублей, в порядке файла."""
     if not path.exists():
-        raise SystemExit(f"Нет файла {path.name} — выгрузи библиотеку с exportify.net")
+        raise SystemExit(f"{path.name} not found — export your library from exportify.net into the data/ folder")
     rows = _from_csv(path) if path.suffix.lower() == ".csv" else _from_txt(path)
     tracks, seen = [], set()
     for t in rows:

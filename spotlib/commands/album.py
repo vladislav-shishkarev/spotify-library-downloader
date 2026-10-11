@@ -34,9 +34,9 @@ def via_ytm(todo, cfg: Config, workers):
         t, n = item
         msg = clean_error(e)
         state.ALBUMS_FAILED.append(t.tid, t.label, f"{type(e).__name__}: {msg}")
-        print(f"#{n} {t.label}\n    ОШИБКА: {msg}", flush=True)
+        print(f"#{n} {t.label}\n    ERROR: {msg}", flush=True)
         if BLOCK_RE.search(msg):
-            print("\nYouTube блокирует — обнови cookies.txt и запусти снова.")
+            print("\nYouTube is blocking — refresh cookies.txt and run again.")
             raise Stop
 
     run_parallel(lambda item: ytmusic.process(item[0], cfg.out_dir, cfg.cookies), todo, workers, on_ok, on_err)
@@ -53,11 +53,11 @@ async def via_bot(todo, cfg: Config, account):
 
 def parse_args(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("url", help="ссылка на альбом Spotify")
-    ap.add_argument("--dry-run", action="store_true", help="только показать треклист")
-    ap.add_argument("--workers", type=int, default=3, help="параллельных загрузок с YouTube Music")
-    ap.add_argument("--bot", action="store_true", help="качать через телеграм-бота, а не YouTube Music")
-    ap.add_argument("--account", type=int, default=1, help="с --bot: номер телеграм-аккаунта")
+    ap.add_argument("url", help="Spotify album link")
+    ap.add_argument("--dry-run", action="store_true", help="only show the tracklist")
+    ap.add_argument("--workers", type=int, default=3, help="parallel downloads from YouTube Music")
+    ap.add_argument("--bot", action="store_true", help="download via the Telegram bot instead of YouTube Music")
+    ap.add_argument("--account", type=int, default=1, help="with --bot: Telegram account number")
     return ap.parse_args(argv)
 
 
@@ -67,22 +67,22 @@ def main(argv=None):
 
     album, tracks = load_album(args.url)
     have = state.downloaded()
-    print(f"{album} ({tracks[0][0].year if tracks else ''}), треков: {len(tracks)}")
+    print(f"{album} ({tracks[0][0].year if tracks else ''}), tracks: {len(tracks)}")
     todo = []
     for t, n in tracks:
-        status = "уже есть" if t.tid in have else "в очереди"
+        status = "already have" if t.tid in have else "queued"
         print(f"  #{n:>2} {t.label} [{int(t.duration) // 60}:{int(t.duration) % 60:02d}] — {status}")
         if t.tid not in have:
             todo.append((t, n))
 
     if args.dry_run or not todo:
-        print("\n--dry-run: ничего не скачивал" if args.dry_run else "\nВесь альбом уже скачан")
+        print("\n--dry-run: nothing downloaded" if args.dry_run else "\nThe whole album is already downloaded")
         return
 
-    print(f"\nКачаю {len(todo)} через {'бота' if args.bot else 'YouTube Music'}...\n", flush=True)
+    print(f"\nDownloading {len(todo)} via {'the bot' if args.bot else 'YouTube Music'}...\n", flush=True)
     if args.bot:
         asyncio.run(via_bot(todo, cfg, args.account))
     else:
         ok = via_ytm(todo, cfg, args.workers)
         if ok < len(todo):
-            print(f"\nНе нашлось {len(todo) - ok} — докачай ботом: python album.py {args.url} --bot")
+            print(f"\n{len(todo) - ok} not found — get them with the bot: python album.py {args.url} --bot")

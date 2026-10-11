@@ -20,13 +20,13 @@ from ..library import load_tracks
 
 def parse_args(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("--limit", type=int, default=0, help="скачать только N треков (для теста)")
-    ap.add_argument("--retry-failed", action="store_true", help="снова пробовать то, что упало")
+    ap.add_argument("--limit", type=int, default=0, help="download only N tracks (for testing)")
+    ap.add_argument("--retry-failed", action="store_true", help="retry tracks that failed before")
     ap.add_argument("--from-history", action="store_true",
-                    help="не просить бота, а забрать уже присланное из истории чата")
-    ap.add_argument("--dry-run", action="store_true", help="с --from-history: только показать совпадения")
+                    help="don't ask the bot, pick up audio it already sent from the chat history")
+    ap.add_argument("--dry-run", action="store_true", help="with --from-history: only show matches")
     ap.add_argument("--account", type=int, default=1,
-                    help="номер телеграм-аккаунта (у каждого своя сессия); 2-й идёт по очереди с конца")
+                    help="Telegram account number (each has its own session); even-numbered accounts go through the queue from the end")
     return ap.parse_args(argv)
 
 
@@ -51,15 +51,15 @@ async def run(args):
         todo.reverse()  # два аккаунта идут навстречу друг другу и не качают одно и то же
     if args.limit:
         todo = todo[: args.limit]
-    print(f"Всего {len(tracks)}, скачано {len(have)}, пропущено (ошибки) {len(failed_ids)}, в очереди {len(todo)}")
-    print(f"Примерно {len(todo) * cfg.cooldown / 3600:.1f} ч без учёта дневного лимита")
+    print(f"Total {len(tracks)}, downloaded {len(have)}, skipped (errors) {len(failed_ids)}, queued {len(todo)}")
+    print(f"About {len(todo) * cfg.cooldown / 3600:.1f} h, not counting the daily limit")
 
     async with open_client(cfg, args.account) as client:
         bot = await client.get_entity(cfg.bot_username)
         await download_queue(client, bot, cfg, todo, state.BOT_DONE, state.BOT_FAILED,
                              label=lambda i, t: f"[{i}/{len(todo)}] {t.label}")
 
-    print(f"Скачано всего: {len(state.downloaded())}. Ошибки — в {state.BOT_FAILED.name}")
+    print(f"Downloaded in total: {len(state.downloaded())}. Errors are in {state.BOT_FAILED.name}")
 
 
 def main(argv=None):

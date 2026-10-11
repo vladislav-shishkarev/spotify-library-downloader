@@ -1,4 +1,4 @@
-"""Качает через телеграм-бота. Подробности и флаги: spotlib/commands/bot.py, python download.py --help"""
+"""Downloads via the Telegram bot. Details and flags: spotlib/commands/bot.py, python download.py --help"""
 from spotlib.commands import run
 from spotlib.commands.bot import main
 

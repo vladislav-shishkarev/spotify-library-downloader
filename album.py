@@ -1,4 +1,4 @@
-"""Качает альбом Spotify целиком. Подробности и флаги: spotlib/commands/album.py, python album.py --help"""
+"""Downloads a whole Spotify album. Details and flags: spotlib/commands/album.py, python album.py --help"""
 from spotlib.commands import run
 from spotlib.commands.album import main
 

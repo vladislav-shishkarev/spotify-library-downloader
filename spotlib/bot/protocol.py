@@ -59,4 +59,4 @@ def is_audio(msg):
 def describe(msgs):
     """Короткое описание последних сообщений бота — для отладки при таймауте."""
     parts = [f"[{(m.raw_text or '').replace(chr(10), ' ')[:120]}]" for m in msgs[:3] if not m.out]
-    return " | ".join(parts) or "бот ничего не ответил"
+    return " | ".join(parts) or "the bot did not reply"
